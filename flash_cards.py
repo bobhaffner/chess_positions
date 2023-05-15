@@ -3,13 +3,11 @@ import json
 import math
 import chess, chess.engine, chess.pgn
 from io import StringIO
-import random
 
 import numpy as np
 from PIL import Image
 import pyvips
-from matplotlib import pyplot as plt
-import matplotlib
+import csv
 
 
 def get_game_archives(player_name):
@@ -37,6 +35,17 @@ def get_pov(game, player_name):
         return chess.WHITE
     return chess.BLACK
 
+def svg_to_image(svg):
+    
+    format_to_dtype = {'uchar': np.uint8}
+
+    img = pyvips.Image.svgload_buffer(str.encode(svg))
+    a = np.ndarray(buffer=img.write_to_memory(), dtype=format_to_dtype[img.format],
+                   shape=[img.height, img.width, img.bands])
+    
+    im = Image.fromarray(a)
+    return im.convert('RGB')
+
 
 player_name =  'bobhaffner'
 
@@ -45,7 +54,7 @@ game_archives = get_game_archives(player_name)
 game_archive = get_latest_game_archive(game_archives)
 print(f"{len(game_archive['games'])} games from {game_archives['archives'][-1]}")
 
-game_info = game_archive['games'][-2]
+game_info = game_archive['games'][-6]
 
 pov = get_pov(game_info, player_name)
 
@@ -55,6 +64,7 @@ pov = get_pov(game_info, player_name)
 goof_threshold = 150
 
 stockfish_path = '/opt/homebrew/Cellar/stockfish/15/bin/stockfish'
+anki_media_path = '/Users/bob/Library/Application Support/Anki2/User 1/collection.media'
 
 # create some python-chess objs    
 # https://github.com/niklasf/python-chess
@@ -62,11 +72,6 @@ engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
 game = chess.pgn.read_game(StringIO(game_info['pgn']))
 board = game.board()
 moves = game.mainline_moves()
-
-# these next two will be keeping track of info from the prior move
-# prior_eval = None
-# engine_move = None
-# engine_move_capture = None
 
 # create a list to keep track of our goofs
 goofs = []
@@ -92,11 +97,10 @@ for i, move in enumerate(moves):
     after_move_info = engine.analyse(board, limit=chess.engine.Limit(time=.1))
     after_move_eval = after_move_info["score"].pov(pov).score(mate_score=100000)
 
-
     # was this move a goof
     if after_move_eval < before_move_eval and abs(before_move_eval - after_move_eval) >= goof_threshold:
         
-        print(player_move, '--', engine_move_san, '\n')
+        print(f'Went {player_move} but should have gone {engine_move_san}\n')
         
         # create a dict to house goof metadata and svgs
         goof = {}
@@ -116,49 +120,32 @@ for i, move in enumerate(moves):
                                                        size=500)
         goofs.append(goof)
 
-
-
 engine.quit()
 
 print(f'{len(goofs)} goof(s) this game')
 
-
 # lets ease into this by sorting best to worst
 sorted_goofs = sorted(goofs, key=lambda d: d['goof_factor']) 
 
-format_to_dtype = {
-    'uchar': np.uint8,
-    'char': np.int8,
-    'ushort': np.uint16,
-    'short': np.int16,
-    'uint': np.uint32,
-    'int': np.int32,
-    'float': np.float32,
-    'double': np.float64,
-    'complex': np.complex64,
-    'dpcomplex': np.complex128,
-}
+img_names = []
 
-fig = plt.figure(figsize=(20, 40))
-rows = len(goofs)
+for goof in sorted_goofs:
+    
+    front_img = svg_to_image(goof['svg'])
+    front_img_name = f"{game_info['uuid']}_{goof['move_num']}_front.jpg"
+    front_img.save(f"{anki_media_path}/{front_img_name}")
 
-for i, goof in zip(range(1, rows * 2 + 1, 2), sorted_goofs):
+    front_img_csv_path = f"<img src='{front_img_name}'/>"
+
+    back_img = svg_to_image(goof['svg_with_engine_move'])
+    back_img_name = f"{game_info['uuid']}_{goof['move_num']}_back.jpg"
+    back_img.save(f"{anki_media_path}/{back_img_name}")
+
+    back_img_csv_path = f"<img src='{back_img_name}'/>"
+
+    img_names.append((front_img_csv_path, back_img_csv_path))
     
-    img = pyvips.Image.svgload_buffer(str.encode(goof['svg']))
-    data = np.ndarray(buffer=img.write_to_memory(), dtype=format_to_dtype[img.format],
-                   shape=[img.height, img.width, img.bands])
-    axl = fig.add_subplot(rows, 2, i)
-    axl.set_title('FRONT')
-    plt.imshow(img)
-    
-    img_with_engine_move = pyvips.Image.svgload_buffer(str.encode(goof['svg_with_engine_move']))
-    data = np.ndarray(buffer=img.write_to_memory(), dtype=format_to_dtype[img.format],
-                   shape=[img.height, img.width, img.bands])
-    axl = fig.add_subplot(rows, 2, i + 1)
-    axl.set_title('BACK')
-    plt.imshow(img_with_engine_move)
-    
-plt.rcParams.update({'font.size': 22})
-fig.tight_layout()
-plt.savefig(f"images/flash_cards_{game_info['uuid']}.jpg")
-#plt.show()
+
+with open('flash_cards.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(img_names)
