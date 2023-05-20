@@ -2,7 +2,7 @@
 
 ## Chess Flash Card POC
 
-A python script that reads in single and multi game PGNs, finds goofs aka bad moves and prepares flash cards that can be imported into [Anki](https://apps.ankiweb.net/)
+A python script that reads in single and multi game PGNs, finds goofs aka bad moves via Stockfish and prepares flash cards that can be imported into [Anki](https://apps.ankiweb.net/)
 
 Example usage  
 ```python flash_cards.py --pgn_path 'pgn/chess_com_games_2023-05-16.pgn'```  
@@ -10,10 +10,17 @@ Example usage
 ```python flash_cards.py --player_name bobhaffner --pgn_path 'pgn/chess_com_games_2023-05-16.pgn'```  
 
 
+### Credits
+[python-chess](https://github.com/niklasf/python-chess)
+
+
+<img src="readme_images/screencast.gif" width="500" height="300" />
+
+
 ### Front
-![Image](images/9afad515-883c-44e3-804f-53bf60d72fab_14_front.jpg)
+![Image](readme_images/2023_05_18_Lammy0185_bobhaffner_7b336cfa-a157-404d-9ff3-365e9b026e77_25_front.jpg)
 ### Back
-![Image](images/9afad515-883c-44e3-804f-53bf60d72fab_14_back.jpg)
+![Image](readme_images/2023_05_18_Lammy0185_bobhaffner_7b336cfa-a157-404d-9ff3-365e9b026e77_25_backjpg)
 
 
 
