@@ -14,7 +14,7 @@ Example usage
 [python-chess](https://github.com/niklasf/python-chess)
 
 
-<img src="readme_images/screencast.gif" width="500" height="300" />
+<img src="readme_images/screencast.gif" width="600" height="400" />
 
 
 ### Front
