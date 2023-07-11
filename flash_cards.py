@@ -13,11 +13,17 @@ from datetime import datetime
 from pathlib import Path
 
 
-def main(player_name, goof_threshold, pgn_path, stockfish_path, card_images_path, card_csv_path):
-
+def main(
+    player_name,
+    goof_threshold,
+    pgn_path,
+    stockfish_path,
+    card_images_path,
+    card_csv_path,
+):
     games = get_pgn(pgn_path)
 
-    print(f'Found {len(games)} games in {pgn_path}\n')
+    print(f"Found {len(games)} games in {pgn_path}\n")
 
     engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
 
@@ -25,7 +31,6 @@ def main(player_name, goof_threshold, pgn_path, stockfish_path, card_images_path
     goofs = []
 
     for game in games:
-        
         # create id for this game
         game_id = f"{game.headers['Date'].replace('.', '_')}_{game.headers['White']}_{game.headers['Black']}_{str(uuid.uuid4())}"
 
@@ -33,61 +38,73 @@ def main(player_name, goof_threshold, pgn_path, stockfish_path, card_images_path
         pov = get_pov(game, player_name)
 
         board = game.board()
-        moves = game.mainline_moves()        
+        moves = game.mainline_moves()
 
         # iterate thru each move and eval the position after each one
         for i, move in enumerate(moves):
-            
             # skip this move if it isn't ours
             if board.turn != pov:
                 board.push(move)
                 continue
 
-            # get a copy of the board before any moves are played 
+            # get a copy of the board before any moves are played
             before_board = board.copy()
-            
+
             # what we played
             player_move = board.san(move)
 
-            before_move_info = engine.analyse(board, limit=chess.engine.Limit(time=.1))
-            engine_move = before_move_info['pv'][0] if 'pv' in before_move_info else None
+            before_move_info = engine.analyse(board, limit=chess.engine.Limit(time=0.1))
+            engine_move = (
+                before_move_info["pv"][0] if "pv" in before_move_info else None
+            )
             engine_move_san = board.san(engine_move)
 
-            before_move_eval = before_move_info["score"].pov(pov).score(mate_score=100000)
-            
+            before_move_eval = (
+                before_move_info["score"].pov(pov).score(mate_score=100000)
+            )
+
             board.push(move)
 
-            after_move_info = engine.analyse(board, limit=chess.engine.Limit(time=.1))
+            after_move_info = engine.analyse(board, limit=chess.engine.Limit(time=0.1))
             after_move_eval = after_move_info["score"].pov(pov).score(mate_score=100000)
 
             # was this move a goof
-            if after_move_eval < before_move_eval and abs(before_move_eval - after_move_eval) >= goof_threshold:
-                
+            if (
+                after_move_eval < before_move_eval
+                and abs(before_move_eval - after_move_eval) >= goof_threshold
+            ):
                 # create a dict to house goof metadata and svgs
                 goof = {}
-                goof['move_num'] = math.ceil((i + 1) / 2)
-                goof['goof_factor'] = abs(before_move_eval - after_move_eval)
-                goof['engine_move'] = engine_move
-                goof['card_id'] = game_id
+                goof["move_num"] = math.ceil((i + 1) / 2)
+                goof["goof_factor"] = abs(before_move_eval - after_move_eval)
+                goof["engine_move"] = engine_move
+                goof["card_id"] = game_id
 
-                print(f"{goof['card_id']}: {goof['move_num']}.{player_move} was a goof\n")
-        
-                arrow_player_move = chess.svg.Arrow(move.from_square, move.to_square, color='red')
-                goof['svg'] = chess.svg.board(before_board,
-                                            arrows=[arrow_player_move], 
-                                            orientation=pov, 
-                                            size=500)
-            
-                goof['svg_with_engine_move'] = chess.svg.board(before_board,
-                                                            arrows=[arrow_player_move, 
-                                                                    chess.svg.Arrow(engine_move.from_square, engine_move.to_square)], 
-                                                            orientation=pov, 
-                                                            size=500)
+                print(
+                    f"{goof['card_id']}: {goof['move_num']}.{player_move} was a goof\n"
+                )
+
+                arrow_player_move = chess.svg.Arrow(
+                    move.from_square, move.to_square, color="red"
+                )
+                goof["svg"] = chess.svg.board(
+                    before_board, arrows=[arrow_player_move], orientation=pov, size=500
+                )
+
+                goof["svg_with_engine_move"] = chess.svg.board(
+                    before_board,
+                    arrows=[
+                        arrow_player_move,
+                        chess.svg.Arrow(engine_move.from_square, engine_move.to_square),
+                    ],
+                    orientation=pov,
+                    size=500,
+                )
                 goofs.append(goof)
 
     engine.quit()
 
-    print(f'Found {len(goofs)} goof(s) in {pgn_path}')
+    print(f"Found {len(goofs)} goof(s) in {pgn_path}")
 
     img_names = []
 
@@ -96,50 +113,44 @@ def main(player_name, goof_threshold, pgn_path, stockfish_path, card_images_path
 
     p = Path(card_csv_path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    
+
     for goof in goofs:
-        
-        front_img = svg_to_image(goof['svg'])
+        front_img = svg_to_image(goof["svg"])
         front_img_name = f"{goof['card_id']}_{goof['move_num']}_front.jpg"
         front_img.save(f"{card_images_path}/{front_img_name}")
 
         front_img_csv_path = f"""<img src='{front_img_name}'/><p><br>{game.headers['Date']} 
                                 {game.headers['White']} vs {game.headers['Black']} on move {goof['move_num']}</p>"""
 
-        back_img = svg_to_image(goof['svg_with_engine_move'])
+        back_img = svg_to_image(goof["svg_with_engine_move"])
         back_img_name = f"{goof['card_id']}_{goof['move_num']}_back.jpg"
         back_img.save(f"{card_images_path}/{back_img_name}")
 
         back_img_csv_path = f"<img src='{back_img_name}'/>"
 
         img_names.append((front_img_csv_path, back_img_csv_path))
-        
 
-    with open(card_csv_path, 'w', newline='') as f:
+    with open(card_csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(img_names)
 
 
 def get_game_archives(player_name):
-
     # get game archives
-    r = requests.get(f'https://api.chess.com/pub/player/{player_name}/games/archives')
+    r = requests.get(f"https://api.chess.com/pub/player/{player_name}/games/archives")
     return json.loads(r.text)
 
 
 def get_game_archive(archive_url):
-    
     r = requests.get(archive_url)
     return json.loads(r.text)
-    
+
 
 def get_latest_game_archive(game_archives):
-
-    return get_game_archive(game_archives['archives'][-1])
+    return get_game_archive(game_archives["archives"][-1])
 
 
 def get_latest_chess_com_game(player_name):
-
     # get all the game archives
     game_archives = get_game_archives(player_name)
 
@@ -148,13 +159,12 @@ def get_latest_chess_com_game(player_name):
     print(f"{len(game_archive['games'])} games from {game_archives['archives'][-1]}")
 
     # get a game
-    game_info = game_archive['games'][-1]
+    game_info = game_archive["games"][-1]
 
-    return chess.pgn.read_game(StringIO(game_info['pgn']))
+    return chess.pgn.read_game(StringIO(game_info["pgn"]))
 
 
 def get_pgn(pgn_path):
-
     pgn = open(pgn_path)
 
     games = []
@@ -170,46 +180,76 @@ def get_pgn(pgn_path):
 
 
 def get_pov(game, player_name):
-
     # are we playing white or black
-    if game.headers['White']== player_name:
+    if game.headers["White"] == player_name:
         return chess.WHITE
     return chess.BLACK
 
 
 def svg_to_image(svg):
-    
-    format_to_dtype = {'uchar': np.uint8}
+    format_to_dtype = {"uchar": np.uint8}
 
     img = pyvips.Image.svgload_buffer(str.encode(svg))
-    a = np.ndarray(buffer=img.write_to_memory(), dtype=format_to_dtype[img.format],
-                   shape=[img.height, img.width, img.bands])
-    
+    a = np.ndarray(
+        buffer=img.write_to_memory(),
+        dtype=format_to_dtype[img.format],
+        shape=[img.height, img.width, img.bands],
+    )
+
     im = Image.fromarray(a)
-    return im.convert('RGB')
+    return im.convert("RGB")
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--player_name', dest='player_name', type=str, default='bobhaffner')
-    parser.add_argument('--goof_threshold', dest='goof_threshold', type=int, default=150, 
-                        help='Any move that drop the eval by more than the goof_threshold will be put in the flash card pile')
-    
-    parser.add_argument('--pgn_path', dest='pgn_path', type=str, 
-                        default='pgn/chess_com_games_2023-05-16.pgn', 
-                        help='Path of the pgn')
+    parser.add_argument(
+        "--player_name", dest="player_name", type=str, default="bobhaffner"
+    )
+    parser.add_argument(
+        "--goof_threshold",
+        dest="goof_threshold",
+        type=int,
+        default=150,
+        help="Any move that drop the eval by more than the goof_threshold will be put in the flash card pile",
+    )
+
+    parser.add_argument(
+        "--pgn_path",
+        dest="pgn_path",
+        type=str,
+        default="pgn/chess_com_games_2023-05-16.pgn",
+        help="Path of the pgn",
+    )
     # 'pgn/lichess_bobhaffner_2023-05-16.pgn'
 
-    parser.add_argument('--stockfish_path', dest='stockfish_path', type=str, 
-                        default='/opt/homebrew/Cellar/stockfish/15/bin/stockfish',
-                        help='Stockfish location')
-    parser.add_argument('--card_images_path', dest='card_images_path', type=str, 
-                        default='/Users/bob/Library/Application Support/Anki2/User 1/collection.media',
-                        help='The desired exported images location')
-    parser.add_argument('--card_csv_path', dest='card_csv_path', type=str, 
-                        default='csv/flash_cards.csv',
-                        help='The desired exported csv location to be used in the Anki import')
+    parser.add_argument(
+        "--stockfish_path",
+        dest="stockfish_path",
+        type=str,
+        default="/opt/homebrew/Cellar/stockfish/15/bin/stockfish",
+        help="Stockfish location",
+    )
+    parser.add_argument(
+        "--card_images_path",
+        dest="card_images_path",
+        type=str,
+        default="/Users/bob/Library/Application Support/Anki2/User 1/collection.media",
+        help="The desired exported images location",
+    )
+    parser.add_argument(
+        "--card_csv_path",
+        dest="card_csv_path",
+        type=str,
+        default="csv/flash_cards.csv",
+        help="The desired exported csv location to be used in the Anki import",
+    )
 
     args = parser.parse_args()
-    main(args.player_name, args.goof_threshold, args.pgn_path, args.stockfish_path, args.card_images_path, args.card_csv_path)
+    main(
+        args.player_name,
+        args.goof_threshold,
+        args.pgn_path,
+        args.stockfish_path,
+        args.card_images_path,
+        args.card_csv_path,
+    )

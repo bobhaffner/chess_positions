@@ -25,6 +25,7 @@ Examples
 
 ## ToDos
 ### * Classify cards ( eg missed capture, missed check, blundered piece, etc)
+### * Investigate the use of older versions of Stockfish to get more "head slappers"
 
 
 ### Credits
