@@ -51,6 +51,8 @@ def main(
             # get a copy of the board before any moves are played
             before_board = board.copy()
 
+            before_board.board_fen()
+
             # what we played
             player_move: str = board.san(move)
 
@@ -64,6 +66,8 @@ def main(
             before_move_eval: int = (
                 before_move_info["score"].pov(pov).score(mate_score=100000)
             )
+
+            before_move_score: chess.engine.Score = before_move_info["score"].pov(pov)
 
             board.push(move)
 
@@ -84,7 +88,11 @@ def main(
                 goof["move_num"] = math.ceil((i + 1) / 2)
                 goof["goof_factor"] = abs(before_move_eval - after_move_eval)
                 goof["engine_move"] = engine_move
+                goof["engine_score"] = before_move_score
                 goof["card_id"] = game_id
+                goof[
+                    "fen_url"
+                ] = f"""<a href="https://lichess.org/analysis/fromPosition/{before_board.fen()}">Lichess Analysis Board</a>"""
 
                 print(
                     f"{goof['card_id']}: {goof['move_num']}.{player_move} was a goof\n"
@@ -129,7 +137,7 @@ def main(
         front_img.save(f"{card_images_path}/{front_img_name}")
 
         front_img_csv_path: str = f"""<img src='{front_img_name}'/><p><br>{game.headers['Date']} 
-                                {game.headers['White']} vs {game.headers['Black']} on move {goof['move_num']}</p>"""
+                                {game.headers['White']} vs {game.headers['Black']} on move {goof['move_num']} {goof["fen_url"]} </p>"""
 
         back_img: Image = svg_to_image(goof["svg_with_engine_move"])
         back_img_name: str = f"{goof['card_id']}_{goof['move_num']}_back.jpg"
