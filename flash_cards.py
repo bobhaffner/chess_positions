@@ -51,8 +51,6 @@ def main(
             # get a copy of the board before any moves are played
             before_board = board.copy()
 
-            before_board.board_fen()
-
             # what we played
             player_move: str = board.san(move)
 
