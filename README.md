@@ -16,12 +16,14 @@ Examples
 <img src="readme_images/screencast.gif" width="600" height="400" />
 
 
-### Front
+### Front Image
 ![Image](readme_images/2023_05_18_Lammy0185_bobhaffner_7b336cfa-a157-404d-9ff3-365e9b026e77_25_front.jpg)
-### Back
+### Back Image
 ![Image](readme_images/2023_05_18_Lammy0185_bobhaffner_7b336cfa-a157-404d-9ff3-365e9b026e77_25_back.jpg)
 
 
+### Anki Flash Card
+![Image](readme_images/flash_card.jpg)
 
 ## ToDos
 ### * Classify cards ( eg missed capture, missed check, blundered piece, etc)
