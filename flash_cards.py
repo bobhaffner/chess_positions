@@ -88,6 +88,9 @@ def main(
                 goof["engine_move"] = engine_move
                 goof["engine_score"] = before_move_score
                 goof["card_id"] = game_id
+                goof["white"] = game.headers["White"]
+                goof["black"] = game.headers["Black"]
+                goof["date"] = game.headers["Date"]
                 goof[
                     "fen_url"
                 ] = f"""<a href="https://lichess.org/analysis/fromPosition/{before_board.fen()}">Lichess Analysis Board</a>"""
@@ -134,8 +137,8 @@ def main(
         front_img_name: str = f"{goof['card_id']}_{goof['move_num']}_front.jpg"
         front_img.save(f"{card_images_path}/{front_img_name}")
 
-        front_img_csv_path: str = f"""<img src='{front_img_name}'/><p><br>{game.headers['Date']}<br> 
-                                {game.headers['White']} vs {game.headers['Black']}<br> Move {goof['move_num']}<br>{goof["fen_url"]} </p>"""
+        front_img_csv_path: str = f"""<img src='{front_img_name}'/><p><br>{goof["date"]}<br> 
+                                {goof["white"]} vs {goof["black"]}<br> Move {goof['move_num']}<br>{goof["fen_url"]} </p>"""
 
         back_img: Image = svg_to_image(goof["svg_with_engine_move"])
         back_img_name: str = f"{goof['card_id']}_{goof['move_num']}_back.jpg"
